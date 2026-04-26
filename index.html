@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Joki FF Premium</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Poppins',sans-serif}
+body{background:#f5f5f5}
+
+/* HEADER */
+header{
+  background:#ff5722;
+  color:#fff;
+  padding:15px;
+  text-align:center;
+  font-weight:600;
+  position:sticky;
+  top:0;
+}
+
+/* CONTAINER */
+.container{padding:15px}
+
+/* CARD */
+.card{
+  background:#fff;
+  padding:15px;
+  border-radius:12px;
+  margin-bottom:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.05);
+}
+
+/* INPUT */
+input,select{
+  width:100%;
+  padding:10px;
+  margin-top:8px;
+  border-radius:8px;
+  border:1px solid #ddd;
+}
+
+/* BUTTON */
+button{
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border:none;
+  border-radius:10px;
+  background:#ff5722;
+  color:#fff;
+  font-weight:600;
+}
+
+/* TEXT */
+.total{margin-top:10px;font-weight:600;color:#ff5722}
+
+/* ADMIN */
+.admin{display:none}
+.order-item{
+  background:#fafafa;
+  padding:10px;
+  border-radius:8px;
+  margin-top:10px;
+}
+
+/* COPY */
+.copy-btn{
+  margin-top:6px;
+  padding:6px;
+  font-size:12px;
+  background:#2196f3;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+}
+
+/* TOAST */
+.toast{
+  position:fixed;
+  bottom:20px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:#333;
+  color:#fff;
+  padding:10px 15px;
+  border-radius:20px;
+  opacity:0;
+  transition:.3s;
+}
+.toast.show{
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
+</style>
+</head>
+
+<body>
+
+<header>🔥 JOKI FF PREMIUM</header>
+
+<div class="container">
+
+<!-- ORDER -->
+<div class="card">
+<h3>Order Joki</h3>
+
+<input type="text" id="nick" placeholder="Nickname">
+<input type="text" id="idgame" placeholder="ID Akun FF">
+
+<select id="mode">
+<option value="">Pilih Mode</option>
+<option value="Ranked Solo">Ranked Solo</option>
+<option value="Ranked Squad">Ranked Squad</option>
+</select>
+
+<select id="tier">
+<option value="">Pilih Tier</option>
+<option value="10000">Bronze - 10k</option>
+<option value="20000">Silver - 20k</option>
+<option value="30000">Gold - 30k</option>
+<option value="50000">Heroic - 50k</option>
+</select>
+
+<input type="number" id="jumlah" value="1">
+
+<select id="vip">
+<option value="false">Normal</option>
+<option value="true">VIP (+10k)</option>
+</select>
+
+<select id="payment">
+<option value="">Metode Pembayaran</option>
+<option value="DANA">DANA</option>
+<option value="GoPay">GoPay</option>
+</select>
+
+<div class="total" id="total">Total: Rp0</div>
+
+<button onclick="order()">Order + Kirim WA</button>
+</div>
+
+<!-- LOGIN -->
+<div class="card">
+<h3>Login Admin</h3>
+<input type="password" id="adminPass" placeholder="Password">
+<button onclick="loginAdmin()">Login</button>
+</div>
+
+<!-- ADMIN -->
+<div class="card admin" id="adminPanel">
+<h3>Dashboard Admin</h3>
+<input type="text" id="search" placeholder="Cari ID..." oninput="renderOrders()">
+<div id="orders"></div>
+</div>
+
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+let dataOrder = JSON.parse(localStorage.getItem("orders")) || [];
+
+/* TOTAL */
+function updateTotal(){
+  let mode = document.getElementById("mode").value;
+  let tier = parseInt(document.getElementById("tier").value) || 0;
+  let jumlah = parseInt(document.getElementById("jumlah").value) || 0;
+  let vip = document.getElementById("vip").value;
+
+  let harga = tier;
+
+  if(mode === "Ranked Squad"){
+    harga += 5000;
+  }
+
+  let total = harga * jumlah;
+
+  // Diskon
+  let diskon = 0;
+  if(jumlah >= 20) diskon = 0.15;
+  else if(jumlah >= 10) diskon = 0.10;
+  else if(jumlah >= 5) diskon = 0.05;
+
+  total -= total * diskon;
+
+  // VIP
+  if(vip === "true"){
+    total += 10000;
+  }
+
+  document.getElementById("total").innerText =
+    "Total: Rp" + total + (diskon>0 ? " (Diskon "+(diskon*100)+"%)":"");
+}
+
+document.getElementById("tier").addEventListener("change", updateTotal);
+document.getElementById("jumlah").addEventListener("input", updateTotal);
+document.getElementById("mode").addEventListener("change", updateTotal);
+document.getElementById("vip").addEventListener("change", updateTotal);
+
+/* ORDER */
+function order(){
+  let nick = document.getElementById("nick").value;
+  let idgame = document.getElementById("idgame").value;
+  let mode = document.getElementById("mode").value;
+  let tier = document.getElementById("tier").value;
+  let jumlah = document.getElementById("jumlah").value;
+  let vip = document.getElementById("vip").value;
+  let payment = document.getElementById("payment").value;
+
+  if(!nick || !idgame || !mode || !tier || !payment){
+    showToast("Lengkapi data!");
+    return;
+  }
+
+  let harga = parseInt(tier);
+  if(mode === "Ranked Squad") harga += 5000;
+
+  let total = harga * jumlah;
+
+  let diskon = 0;
+  if(jumlah >= 20) diskon = 0.15;
+  else if(jumlah >= 10) diskon = 0.10;
+  else if(jumlah >= 5) diskon = 0.05;
+
+  total -= total * diskon;
+
+  if(vip === "true") total += 10000;
+
+  let newOrder = {
+    nick,idgame,mode,tier,jumlah,payment,vip,status:"Pending"
+  };
+
+  dataOrder.push(newOrder);
+  localStorage.setItem("orders", JSON.stringify(dataOrder));
+
+  let nomorAdmin = "6282273146188"; // GANTI NOMOR
+  let pesan = `Halo Admin Joki FF
+
+Mode: ${mode}
+Nickname: ${nick}
+ID: ${idgame}
+Bintang: ${jumlah}
+VIP: ${vip==="true"?"Ya":"Tidak"}
+Total: Rp${total}
+Pembayaran: ${payment}`;
+
+  window.open(`https://wa.me/${nomorAdmin}?text=${encodeURIComponent(pesan)}`);
+
+  showToast("Order dikirim!");
+}
+
+/* ADMIN */
+function loginAdmin(){
+  let pass = document.getElementById("adminPass").value;
+  if(pass === "roby20031101"){
+    document.getElementById("adminPanel").style.display = "block";
+    renderOrders();
+  } else showToast("Password salah");
+}
+
+function renderOrders(){
+  let keyword = document.getElementById("search").value.toLowerCase();
+  let container = document.getElementById("orders");
+  container.innerHTML = "";
+
+  dataOrder.forEach((o,i)=>{
+    if(o.idgame.toLowerCase().includes(keyword)){
+      container.innerHTML += `
+      <div class="order-item">
+        ${o.mode} - ${o.nick} (${o.idgame})<br>
+        ${o.jumlah}⭐ | ${o.payment} | ${o.vip==="true"?"VIP":"Normal"}<br>
+        Status: ${o.status}<br>
+        <button class="copy-btn" onclick="copyID('${o.idgame}')">📋 Copy ID</button>
+        <button onclick="acc(${i})">ACC</button>
+        <button onclick="done(${i})">Selesai</button>
+        <button onclick="hapus(${i})">Hapus</button>
+      </div>`;
+    }
+  });
+}
+
+/* ACTION */
+function acc(i){dataOrder[i].status="Diproses";save();}
+function done(i){dataOrder[i].status="Selesai";save();}
+function hapus(i){dataOrder.splice(i,1);save();}
+function save(){localStorage.setItem("orders",JSON.stringify(dataOrder));renderOrders();}
+
+/* COPY */
+function copyID(id){
+  navigator.clipboard.writeText(id);
+  showToast("ID disalin");
+}
+
+/* TOAST */
+function showToast(msg){
+  let t = document.getElementById("toast");
+  t.innerText = msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"),2000);
+}
+</script>
+
+</body>
+</html>
